@@ -1,0 +1,201 @@
+sub InitAlien(x as ubyte, y as ubyte)
+    AlienX = x
+    AlienY = y
+    AlienLocation = AlienLocationDown
+    AlienFrame = 0
+    AlienAction = AlienActionUp
+    AlienHP = 4
+    AlienDead = 0
+    LockDoors()
+end sub
+
+sub DrawAlienDies()    
+    AlienDead=1
+    RedrawArea(AlienX,playerY)
+    AlienY=playerY+1
+    AlienDies()
+    if AlienFrame=1 then
+        AlienScream()
+        print at AlienY, AlienX; ink 3; bright 1; "\A"        
+    end if 
+    if AlienFrame=2 then
+        print at AlienY, AlienX; ink 3; bright 1; "\B"
+    end if 
+    if AlienFrame=3 then
+        print at AlienY, AlienX; ink 3; bright 1; "\C"
+    end if 
+    if AlienFrame=4 then
+        print at AlienY, AlienX; ink 3; bright 1; "\D"
+    end if 
+    if AlienFrame=5 then
+        print at AlienY, AlienX; ink 3; bright 1; "\E"
+    end if 
+    if AlienFrame=6 then
+        print at AlienY, AlienX; ink 3; bright 1; "\F"
+    end if 
+    if AlienFrame=7 then
+        RedrawArea(AlienX,AlienY)
+        AlienHP=0
+    end if 
+    Wait(): Wait(): Wait(): Wait(): Wait(): Wait()
+    playerCanMoveRight = 0
+    playerCanMoveLeft = 0
+end sub
+
+sub DrawAlien()
+    if AlienAction=AlienActionEmpty then
+        AlienMoveUpDown() 
+        if AlienLocation = AlienLocationUp then
+            print at AlienY, AlienX; ink 3; "\H"
+        end if 
+        if AlienLocation = AlienLocationDown then
+            print at AlienY, AlienX; ink 3; "\A"
+        end if 
+    end if 
+
+    if AlienAction=AlienActionUp then
+        if AlienFrame=5 then
+            RedrawArea(AlienX,AlienY)
+        end if 
+        AlienMoveUpDown()       
+        if AlienFrame=1 then
+            print at AlienY, AlienX; ink 3; "\A"
+        end if 
+        if AlienFrame=2 then
+            print at AlienY, AlienX; ink 3; "\B"
+        end if 
+        if AlienFrame=3 then
+            print at AlienY-1, AlienX; ink 3; "\C"
+            print at AlienY, AlienX; ink 3; "\D"
+        end if 
+        if AlienFrame=4 then
+            print at AlienY-1, AlienX; ink 3; "\E"
+            print at AlienY, AlienX; ink 3; "\F"
+        end if 
+        if AlienFrame=5 then
+            print at AlienY-1, AlienX; ink 3; "\G"
+        end if 
+        if AlienFrame=6 then
+            print at AlienY-1, AlienX; ink 3; "\H"
+            AlienAction=AlienActionEmpty
+            AlienY=AlienY-1
+            AlienLocation = AlienLocationUp
+        end if 
+    end if 
+
+    if AlienAction=AlienActionDown then
+        if AlienFrame=5 then
+            RedrawArea(AlienX, AlienY)
+        end if 
+        AlienMoveUpDown()
+        if AlienFrame=1 then
+            print at AlienY, AlienX; ink 3; "\H"
+        end if 
+        if AlienFrame=2 then
+            print at AlienY, AlienX; ink 3; "\G"
+        end if 
+        if AlienFrame=3 then
+            print at AlienY, AlienX; ink 3; "\E"
+            print at AlienY+1, AlienX; ink 3; "\F"
+        end if 
+        if AlienFrame=4 then
+            print at AlienY, AlienX; ink 3; "\C"
+            print at AlienY+1, AlienX; ink 3; "\D"
+        end if
+        if AlienFrame=5 then
+            print at AlienY+1, AlienX; ink 3; "\B"
+        end if 
+        if AlienFrame=6 then
+            print at AlienY+1, AlienX; ink 3; "\A"
+            AlienY=AlienY+1
+            AlienAction=AlienActionEmpty   
+            AlienLocation = AlienLocationDown         
+        end if 
+    end if 
+
+    if AlienAction=AlienActionRight then
+        if AlienLocation=AlienLocationUp then AlienMoveRightLeft() 
+        if AlienLocation=AlienLocationDown then AlienMoveRightLeft2() 
+        if AlienFrame=6 then            
+            AlienAction=AlienActionEmpty
+            AlienX=AlienX+1
+            RedrawArea(AlienX-1,AlienY)
+        end if               
+        if AlienFrame=1 then
+            print at AlienY, AlienX; ink 3; "\A\B"
+        end if 
+        if AlienFrame=2 then
+            print at AlienY, AlienX; ink 3; "\C\D"
+        end if 
+        if AlienFrame=3 then
+            print at AlienY, AlienX; ink 3; "\E\F"
+        end if 
+        if AlienFrame=4 then
+            print at AlienY, AlienX; ink 3; "\G\H"
+        end if 
+        if AlienFrame=5 then
+            print at AlienY, AlienX; ink 3; "\I\J"            
+        end if 
+    end if 
+
+    if AlienAction=AlienActionLeft then
+        AlienMoveRightLeft() 
+        if AlienFrame=6 then
+            AlienAction=AlienActionEmpty
+            AlienX=AlienX-1
+            RedrawArea(AlienX+1,AlienY)
+        end if               
+        if AlienFrame=1 then
+            print at AlienY, AlienX-1; ink 3; "\I\J"
+        end if 
+        if AlienFrame=2 then
+            print at AlienY, AlienX-1; ink 3; "\G\H"
+        end if 
+        if AlienFrame=3 then
+            print at AlienY, AlienX-1; ink 3; "\E\F"
+        end if 
+        if AlienFrame=4 then
+            print at AlienY, AlienX-1; ink 3; "\C\D"
+        end if 
+        if AlienFrame=5 then
+            print at AlienY, AlienX-1; ink 3; "\A\B"            
+        end if 
+    end if 
+
+    dim shiftsprite as ubyte
+    if AlienAction=AlienActionFireRight then
+        AlienFireRight()
+        shiftsprite=0
+    end if 
+    if AlienAction=AlienActionFireLeft then
+        AlienFireLeft()
+        shiftsprite=1
+    end if
+    if AlienAction=AlienActionFireRight or AlienAction=AlienActionFireLeft then
+        if AlienFrame=1 and AlienAction=AlienActionFireRight then
+            print at AlienY, AlienX; ink 3; "\A"
+        end if 
+        if AlienFrame=7 and AlienAction=AlienActionFireRight then
+            RedrawArea(AlienX+1,AlienY)
+        end if 
+        if AlienFrame=1 and AlienAction=AlienActionFireLeft then
+            print at AlienY, AlienX; ink 3; "\A"
+        end if 
+        if AlienFrame=7 and AlienAction=AlienActionFireLeft then
+            RedrawArea(AlienX-1,AlienY)
+        end if 
+        if AlienFrame=7 then
+            AlienAction=AlienActionEmpty
+        end if 
+        if AlienFrame=2 or AlienFrame=6 then
+            print at AlienY, AlienX-shiftsprite; ink 3; "\B\C"
+        end if 
+        if AlienFrame=3 or AlienFrame=5 then
+            print at AlienY, AlienX-shiftsprite; ink 3; "\D\E"
+        end if 
+        if AlienFrame=4 then
+            print at AlienY, AlienX-shiftsprite; ink 3; "\F\G"
+        end if 
+    end if 
+end sub
+

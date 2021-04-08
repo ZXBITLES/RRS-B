@@ -1,0 +1,802 @@
+﻿#include "Levels.zxbas"
+#include "DrawPlayer.zxbas"
+#include "Environment.zxbas"
+
+dim playerMove as ubyte = 0
+dim playerDirection as ubyte = directionRS
+dim playerX as ubyte = 0
+dim playerY as ubyte = 0
+dim playerFrame as ubyte = 1
+dim playerStairsDelay as ubyte = 0
+dim playerDead as ubyte = 0
+dim playerLives as ubyte
+dim playerAmmo as ubyte
+dim playerShield as ubyte
+dim playerFrags as ubyte
+dim playerDifficulty as ubyte = 0
+dim clearAch as ubyte = 0
+
+dim playerCanMoveLeft as ubyte
+dim playerCanMoveRight as ubyte
+
+dim npcMove(5) as ubyte
+dim npcDirection(5) as ubyte
+dim npcX(5) as ubyte
+dim npcY(5) as ubyte
+dim npcWorried(5) as ubyte
+dim npcLive(5) as ubyte
+dim npcFrame(5) as ubyte
+dim npcDuration(5) as ubyte
+dim npcHP(5) as ubyte
+dim npcActive(5) as ubyte
+
+function GetChar(x as ubyte, y as ubyte) as ubyte
+	return GetChar1(x,y)
+end function
+
+sub RedrawArea(x as ubyte, y as ubyte) 
+	RedrawArea1(x,y)
+end sub
+
+sub LockDoors()
+	if AlienDead=1 then return
+	dim x as ubyte
+	dim lockd as ubyte
+	for x=0 to 31
+		if map(playerY,x)=11 then			
+			lockd=0
+			if playerDirection=0 or playerDirection=2 or playerDirection=8 or playerDirection=15 then
+				if x>AlienX and x>playerX then
+					lockd=1
+				end if 
+				if x<AlienX and x<playerX then
+					lockd=1
+				end if 
+			else
+				if x>AlienX and x>playerX+1 then
+					lockd=1
+				end if 
+				if x<AlienX and x<playerX then
+					lockd=1
+				end if 
+			end if 
+			if lockd = 1 then RefreshDoor(x+1,playerY,2,10,1)
+		end if 
+	next	
+end sub 
+
+sub InitLevels()
+	InitLevels1()
+end sub
+
+sub SaveLevel(mapNum as ubyte)
+	SaveLevel1(mapNum)
+end sub
+
+sub SetDifficulty(difficulty as ubyte)
+	playerDifficulty = difficulty
+	achHH = 0 ' Achievement Head Hunter!
+	achFB = 0 ' Achievement SOS!
+	achKHU = 0 ' Achievement Kick Him Up!
+	achHS = 6 ' Achievement Head Shot!
+	achTL = 0
+end sub
+
+sub RespawnPlayer()
+	playerMove = 0
+	playerDead = 0	
+	if playerDirection=directionRX then
+		playerDirection=directionRS
+	else
+		playerDirection=directionLS
+	end if 
+	DrawPlayer(playerDirection,playerFrame,playerX,playerY,7)
+	DrawUI1(playerLives,playerAmmo,playerShield,playerFrags)
+end sub
+
+sub DrawLevel(mapNum as ubyte)
+	mapNumber=mapNum
+    DrawLevel1(mapNum)
+	if mapNumber=1 and achHH=0 then
+		InitNPC(27,17,directionRS,0)
+		InitNPC(30,14,directionRS,1)
+		InitNPC(24,7,directionRS,2)
+		InitNPC(29,11,directionLS,3)
+		InitNPC(11,14,directionRS,4)
+		InitNPC(8,17,directionRS,5)
+	end if 
+	if mapNumber=2 and achHH=0 then
+		InitNPC(26,11,directionRS,0)
+		InitNPC(24,14,directionRS,1)
+		InitNPC(8,13,directionRS,2)
+		InitNPC(12,14,directionRS,3)
+		InitNPC(19,16,directionRS,4)
+		InitNPC(18,12,directionLS,5)
+	end if 
+	if mapNumber=3 and achHH=0 then
+		InitNPC(3,11,directionRS,0)
+		InitNPC(10,11,directionRS,1)
+		InitNPC(3,14,directionRS,2)
+		InitNPC(15,14,directionRS,3)		
+		InitNPC(3,17,directionLS,4)		
+		InitNPC(13,17,directionLS,5)
+	end if 
+	RefreshNPCs()
+end sub
+
+function GetMap() as ubyte
+	return mapNumber
+end function
+
+sub LockUnlockExit(a as ubyte)
+	if a=0 then
+		map(5,26)=6
+	else
+		map(5,26)=200
+	end if 
+	RedrawArea1(26,5)
+end sub 
+
+sub ClearStatusLine()
+	paper 0
+	for i=0 to 31
+		print at 21,i; " "
+	next
+end sub
+
+function NPCCanMoveLeft(x as ubyte,y as ubyte) as ubyte
+	return CanMoveLeft(x,y)
+end function
+
+function NPCCanMoveRight(x as ubyte,y as ubyte) as ubyte
+	return CanMoveRight(x,y)
+end function
+
+sub ShowAchievements()
+	if clearAch = 100 then
+		ClearStatusLine()
+		clearAch = 0
+	end if
+	if clearAch>0 then clearAch = clearAch + 1: goto achfinished2		
+	ink 6
+	flash 1	
+	'dim music as ubyte
+	'music=0
+	if achHH = 1 then			
+		printat64(21,24): print64(" HEAD HUNTER! ")
+		achHH = 2
+		'music=2
+		goto achrefresh
+	end if
+	if achFB = 1 then
+		printat64(21,24): print64(" FIRST BLOOD! ")
+		achFB = 2
+		'music=3
+		goto achrefresh
+	end if
+	if achKHU = 1 then
+		printat64(21,25): print64(" KICK HIM UP! ")
+		achKHU = 2
+		'music=4
+		goto achrefresh
+	end if
+	if achHS = 1 then
+		printat64(21,23): print64(" TRIPLE HEADSHOT! ")
+		achHS = 2
+		'music=5
+		goto achrefresh
+	end if
+	if achTL = 1 then achTL = 2: clearAch = 1: goto achfinished2
+	:achfinished
+	goto achfinished2
+	:achrefresh
+	flash 0 
+	'if music>0 then
+	''	RefreshNPCs()
+	''	PlayerOrNPCAction(playerX, playerY, playerDirection, actionEmpty, playerMove, playerFrame, 7, 0)
+	''	PlayMusic(music)
+	'end if 
+	clearAch = 1
+	Shock()
+	DrawUI1(playerLives,playerAmmo,playerShield,playerFrags)
+	:achfinished2
+end sub 
+
+dim temp as ubyte
+
+sub PlayerOrNPCAction(x as ubyte, y as ubyte, direction as ubyte, action as ubyte, move as ubyte, frame as ubyte, color as ubyte, index as ubyte)
+	'Achievements
+	if index = 0 then
+		ShowAchievements()
+	end if
+	
+	flash 0
+	paper 0
+	
+	dim i as ubyte
+	dim fall as ubyte = 0 
+	fall = CanFall(x,y,1)
+	if fall = 1 then
+		RedrawArea1(x,y)
+		RedrawArea1(x - 1,y)
+		RedrawArea1(x + 1,y)
+		y=y+1
+	end if
+		
+	if move = 1 and frame = 5 and direction <> directionLF and direction <> directionRF and direction <> directionLK and direction <> directionRK then move = 0
+
+	if move = 0 and frame = 1 then
+		if index = 0 and playerDead = 0 then
+			dim canMove as ubyte = 1
+			if action = actionR then
+				direction = directionRS
+				if CanMoveRight(x,y) = 1 then
+					for i = 0 to 5
+						if npcLive(i) = 1 then
+							if npcX(i) = x + 2 and npcY(i) = y then
+								canMove = 0
+								exit for
+							end if
+						end if
+					next i
+					if canMove = 1 then
+						move = 1
+						direction = directionR
+					end if
+				end if
+			end if
+			if action = actionL then
+				direction = directionLS
+				if CanMoveLeft(x,y) = 1 then
+					for i = 0 to 5
+						if npcLive(i) = 1 then
+							if npcX(i) = x - 2 and npcY(i) = y then
+								canMove = 0
+								exit for
+							end if
+						end if
+					next i
+					if canMove = 1 then
+						move = 1
+						direction = directionL
+					end if
+				end if
+			end if
+		else
+			if index > 0 then
+				if action = actionL then
+					direction = directionL
+					move = 1
+				end if
+				if action = actionR then
+					direction = directionR
+					move = 1
+				end if
+			end if
+		end if
+	end if
+
+	if direction = directionR or direction = directionL or direction = directionRF or direction = directionLF or direction = directionRK or direction = directionLK then
+	   DrawPlayer(direction,frame,x,y,color)
+	else
+		if direction <> directionRX and direction <> directionLX then
+			DrawPlayer(direction,1,x,y,color)
+		end if
+	end if
+
+
+	if move = 0 then
+		if direction = directionR then x = x + 1
+		if direction = directionL then x = x - 1
+
+		if direction = directionR then direction = directionRS
+		if direction = directionL then direction = directionLS
+
+		if action=actionU and index=0 and AlienDead=1 then
+			if ActivateTerminal(x,y)=1 then 
+				action=actionEmpty			
+			end if 
+		end if 
+
+
+		if action = actionD and (direction = directionRS or direction = directionR or direction = directionRF) then direction = directionRD
+		if action = actionD and (direction = directionLS or direction = directionL or direction = directionLF) then direction = directionLD
+		if action = actionU and direction = directionRD then direction = directionRS
+		if action = actionU and direction = directionLD then direction = directionLS
+		
+		dim redraw as ubyte = 0
+		'Stairs
+		if action = actionU and CanMoveUpDown(x,y+1) = 1 and index = 0 then
+			playerStairsDelay = playerStairsDelay + 1
+			if playerStairsDelay = 1 or playerStairsDelay = 2 then
+				if direction = directionRS or direction = directionRS2 then direction = directionRS1
+				if direction = directionLS or direction = directionLS2 then direction = directionLS1
+				redraw = 1: goto finish0
+			end if
+			if playerStairsDelay = 3 then
+				if direction = directionRS or direction = directionRS1 then direction = directionRS2
+				if direction = directionLS or direction = directionLS1 then direction = directionLS2
+				redraw = 1: goto finish0
+			end if
+			if playerStairsDelay = 4 then
+				playerStairsDelay = 0
+				RedrawArea1(x,y + 1)
+				RedrawArea1(x + 1,y + 1)
+				y = y - 1
+				if direction = directionRS or direction = directionRS1 then direction = directionRS2
+				if direction = directionLS or direction = directionLS1 then direction = directionLS2
+				redraw = 1: goto finish0
+			end if
+		end if
+		if action = actionU and CanMoveUpDown(x,y+1) = 0 and index = 0 then
+			if direction = directionRS1 or direction = directionRS2 then direction = directionRS
+			if direction = directionLS1 or direction = directionLS2 then direction = directionLS
+			redraw = 1: goto finish0
+		end if
+		if action = actionD and index = 0 and (direction = directionRD or direction = directionLD or direction = directionRS1 or direction = directionRS2 or direction = directionLS1 or direction  = directionLS2) and CanMoveUpDown(x,y +2) = 1 then
+			playerStairsDelay = playerStairsDelay + 1
+			if playerStairsDelay = 1 or playerStairsDelay = 2 then
+				if direction = directionRS or direction = directionRD or direction = directionRS2 then direction = directionRS1
+				if direction = directionLS or direction = directionLD or direction = directionLS2 then direction = directionLS1
+				redraw = 1: goto finish0
+			end if
+			if playerStairsDelay = 3 then
+				if direction = directionRS or direction = directionRS1 then direction = directionRS2
+				if direction = directionLS or direction = directionLS1 then direction = directionLS2
+				redraw = 1: goto finish0
+			end if
+			if playerStairsDelay = 4 then
+				playerStairsDelay = 0
+				RedrawArea1(x,y)
+				y = y + 1
+				if direction = directionRS or direction = directionRS1 then direction = directionRS2
+				if direction = directionLS or direction = directionRS1 then direction = directionLS2
+				redraw = 1: goto finish0
+			end if
+		end if
+		if action = actionD and CanMoveUpDown(x,y +2) = 0 and index = 0 then
+			if direction = directionRS1 or direction = directionRS2 then direction = directionRD
+			if direction = directionLS1 or direction = directionLS2 then direction = directionLD
+			redraw = 1: goto finish0
+		end if
+		
+		finish0:
+		if redraw = 1 then 
+			DrawPlayer(direction,frame,x,y,color)
+			goto finish
+		end if 
+		
+		dim refresh as byte
+		refresh = 0
+		dim cankick as ubyte
+		cankick = 0
+		dim nhp as ubyte
+		dim nx as ubyte
+		dim ny as ubyte
+		dim hit as ubyte 
+		dim ndir as ubyte
+		dim ahit as ubyte
+
+		if action = actionF and (direction = directionRS or direction = directionR or direction = directionRD) then
+			if index = 0 then
+				move = 1
+				frame = 1
+				hit = 0
+				for i = 0 to 5
+					if npcLive(i) = 1 then
+						nhp = npcHP(i)
+						nx = npcX(i)
+						ny = npcY(i)
+						if nx = x+2 and ny = y and nhp>0 then
+							if CanMoveRight(x,y)=1 then
+								cankick = 1
+								direction = directionRK
+								npcDirection(i)=directionLS
+								if CanMoveRight(nx,ny)=1 then
+									nx = nx + 1
+									npcX(i)=nx
+								end if 
+								border 1
+								DrawPlayer(direction,frame,x,y,color)
+								KickSound()									
+								nhp = nhp - 1
+								npcHP(i) = nhp
+								if nhp = 0 and achKHU = 0 then achKHU = 1
+								goto quitkickright
+							end if
+						end if
+					end if
+				next i
+				:quitkickright
+				if cankick = 0 then
+					if playerAmmo=0 then PlayMusic(3)
+					if CanMoveRight(x,y) = 1 and playerAmmo > 0 then
+						playerAmmo = playerAmmo - 1
+						direction = directionRF
+						DrawPlayer(direction,frame,x,y,color)
+						ShotSound()
+						'Shot to alien
+						if AlienHP>1 then
+							if AlienX>x then
+								ahit=0
+								if AlienAction=AlienActionDown and (AlienFrame>1 and AlienFrame<5)  then
+									ahit=1
+								end if
+								if AlienAction=AlienActionUp and (AlienFrame>2 and AlienFrame<6)  then
+									ahit=1
+								end if
+								if AlienAction=AlienActionFireLeft and (AlienFrame>1 and AlienFrame<7)  then
+									ahit=1
+								end if
+								if ahit=1 then
+									AlienScream()
+									border 1
+									AlienHP=AlienHP-1
+								end if  			
+							end if 
+						end if 
+						for i = 0 to 5
+							if npcLive(i) = 1 then
+								nhp = npcHP(i)
+								nx = npcX(i)
+								ny = npcY(i)
+								ndir = npcDirection(i)
+								if nx>x and ny = y and nhp>0 and ndir <> directionRD and ndir <> directionLD then
+									if CanHit(x,y,nx) = 1 then
+										nhp = nhp - 1
+										hit = 1
+										npcHP(i) = nhp
+										npcFrame(i)=1
+										npcDirection(i)=directionLX
+										DrawPlayer(npcDirection(i),npcFrame(i),nx-1,ny,5)
+										npcDirection(i)=directionLS
+										if achHS > 2 then achHS = achHS - 1
+										'if nhp = 0 and achFB = 0 then achFB = 1
+										if nhp = 0 and achHS > 2 then achHS = 6
+										border 1
+										if nhp = 0 then
+											SetBlood(ndir,nx,ny)
+										end if 
+										goto quitfireright										
+									end if
+								end if
+							end if
+						next i
+						:quitfireright
+						DrawUI1(playerLives, playerAmmo, playerShield, playerFrags)
+						if hit = 0 and achHS > 2 then achHS = 6
+					end if
+				end if
+				border 0
+				refresh = 1
+			else
+				if npcLive(index - 1) = 1 then
+					if CanHit(npcX(index - 1),y,playerX) = 1 then
+						frame = 1
+						move = 1
+						if playerX-2 = npcX(index - 1) then
+							direction = directionRK
+							playerDirection=directionLS
+							if CanMoveRight(playerX,playerY)=1 then
+								playerX=playerX+1
+							end if 
+							border 2
+							DrawPlayer(direction,frame,x,y,color)
+							KickSound()							
+							playerShield = playerShield  - 1
+							'nohit = 1
+						else
+							if playerX > x and playerY = y and playerDirection <> directionRD and playerDirection <> directionLD then
+								border 2
+								playerShield = playerShield  - 1
+								'nohit = 1
+							end if
+							direction = directionRF
+							DrawPlayer(direction,frame,x,y,color)
+							ShotSound()
+						end if 
+						border 0
+						DrawUI1(playerLives, playerAmmo, playerShield, playerFrags)						
+					end if
+				end if
+			end if
+		end if
+		if action = actionF and (direction = directionLS or direction = directionL or direction = directionLD) then
+			if index = 0 then
+				move = 1
+				frame = 1
+				'hit = 0
+				for i = 0 to 5
+					if npcLive(i) = 1 then
+						nhp = npcHP(i)
+						nx = npcX(i)
+						ny = npcY(i)
+						if nx+2 = x and ny = y and nhp>0 then
+							if CanMoveLeft(x,y)=1 then
+								cankick = 1
+								direction = directionLK
+								npcDirection(i)=directionRS
+								if CanMoveLeft(nx,ny)=1 then
+									if map(ny+2,nx-1)<>0 then
+										nx = nx - 1
+										npcX(i)=nx
+									end if 
+								end if 
+								border 1
+								DrawPlayer(direction,frame,x,y,color)
+								KickSound()									
+								nhp = nhp - 1
+								npcHP(i) = nhp
+								if nhp = 0 and achKHU = 0 then achKHU = 1
+								goto quitkickleft
+							end if
+						end if
+					end if
+				next i
+				:quitkickleft
+				if cankick = 0 then
+					if playerAmmo=0 then PlayMusic(3)
+					if CanMoveLeft(x,y) = 1 and playerAmmo > 0 then
+						playerAmmo = playerAmmo - 1
+						direction = directionLF
+						DrawPlayer(direction,frame,x,y,color)
+						ShotSound()
+						'Shot to alien
+						if AlienHP>1 then
+							if AlienX<x then
+								ahit=0
+								if AlienAction=AlienActionDown and (AlienFrame>1 and AlienFrame<5)  then
+									ahit=1
+								end if
+								if AlienAction=AlienActionUp and (AlienFrame>2 and AlienFrame<6)  then
+									ahit=1
+								end if
+								if AlienAction=AlienActionFireRight and (AlienFrame>1 and AlienFrame<7)  then
+									ahit=1
+								end if
+								if ahit=1 then
+									AlienScream()
+									border 1
+									AlienHP=AlienHP-1
+								end if 		
+							end if 
+						end if 
+						for i = 0 to 5
+							if npcLive(i) = 1 then
+								nhp = npcHP(i)
+								nx = npcX(i)
+								ny = npcY(i)	
+								ndir = npcDirection(i)							
+								if nx<x and ny = y and nhp>0 and ndir <> directionRD and ndir <> directionLD then
+									if CanHit(nx,y,x) = 1 then										
+										npcFrame(i)=1
+										npcDirection(i)=directionRX
+										DrawPlayer(npcDirection(i),npcFrame(i),nx,ny,5)											
+										npcDirection(i)=directionRS
+										nhp = nhp - 1
+										hit = 1
+										npcHP(i) = nhp
+										if achHS > 2 then achHS = achHS - 1
+										'if nhp = 0 and achFB = 0 then achFB = 1
+										if nhp = 0 and achHS > 3 then achHS = 6
+										border 1
+										if nhp = 0 then
+											SetBlood(ndir,nx,ny)
+										end if 
+										goto quitfireleft
+									end if
+								end if
+							end if
+						next i
+						:quitfireleft
+						DrawUI1(playerLives, playerAmmo, playerShield, playerFrags)
+						if hit = 0 and achHS > 2 then achHS = 6
+					end if
+				end if
+				border 0
+				refresh = 1
+			else
+				if npcLive(index - 1) = 1 then
+					if CanHit(playerX,playerY,npcX(index - 1)) = 1 then
+						move = 1
+						frame = 1
+						if playerX+2 = npcX(index - 1) then
+							direction = directionLK
+							playerDirection=directionRS
+							if CanMoveLeft(playerX,playerY)=1 then
+								playerX=playerX-1
+							end if 
+							border 2
+							DrawPlayer(direction,frame,x,y,color)
+							KickSound()							
+							playerShield = playerShield  - 1
+							'nohit = 1
+						else
+							if playerX < x and playerY = y  and playerDirection <> directionRD and playerDirection <> directionLD then
+								border 2
+								playerShield = playerShield  - 1
+								'nohit = 1
+							end if
+							direction = directionLF
+							DrawPlayer(direction,frame,x,y,color)
+							ShotSound()	
+						end if 	
+						border 0
+						DrawUI1(playerLives, playerAmmo, playerShield, playerFrags)
+					end if
+				end if
+			end if
+		end if
+		if refresh = 1 then
+			RefreshNPCs()
+			DrawPlayer(direction,frame,x,y,color)
+		end if
+	end if
+	
+	if direction = directionRX then
+		if x = 0 then x = 1
+		if frame<5 then
+			temp = map(y + 1,x + 1)
+			if temp = 10 or temp = 51 or temp = 52 then x=x-1
+			temp = map(y + 1,x)
+			if temp = 10 or temp = 51 or temp = 52 then x=x+1
+		end if 
+		DrawPlayer(directionRX,frame,x,y,color)
+		if playerShield>0 then DrawPlayer(playerDirection,playerFrame,playerX,playerY,7)
+		if index>0 and npcHP(index-1) = 0 then
+			fall = CanFall(x,y,0)
+		end if 
+		if fall = 0 then
+			if frame = 5 then
+				if map(y+1,x)<>10 then map(y + 1,x) = 12
+				if map(y+1,x+1)<>10 then map(y + 1,x + 1) = 13
+			end if	
+		end if 		
+		if frame = 5 and index = 0 then 
+			playerDead = 1
+		end if 	
+	end if
+	if direction = directionLX then
+		if x = 31 then x = 30
+		if frame<5 then
+			temp = map(y + 1,x)
+			if temp = 10 or temp = 51 or temp = 52 then x=x+1
+			temp = map(y + 1,x + 1)
+			if temp = 10 or temp = 51 or temp = 52 then x=x-1	
+		end if 
+		DrawPlayer(directionLX,frame,x,y,color)
+		if playerShield>0 then DrawPlayer(playerDirection,playerFrame,playerX,playerY,7)
+		if index>0 and npcHP(index-1) = 0 then
+			fall = CanFall(x,y,0)
+		end if 
+		if fall = 0 then
+			if frame = 5 then
+				if map(y+1,x)<>10 then map(y + 1,x) = 14
+				if map(y+1,x+1)<>10 then map(y + 1,x + 1) = 15
+			end if
+		end if 
+		if frame = 5 and index = 0 then 
+			playerDead = 1
+		end if 
+	end if
+
+	if frame = 4 then
+	  if direction = directionLF then direction = directionLS
+	  if direction = directionRF then direction = directionRS
+	end if
+	if frame = 4 then
+	  if direction = directionLK then direction = directionLS
+	  if direction = directionRK then direction = directionRS
+	end if
+:finish
+
+	if index = 0 then
+		playerMove = move
+		playerDirection = direction
+		playerX = x
+		playerY = y
+		playerFrame = frame
+	else
+		npcMove(index - 1) = move
+		npcDirection(index - 1) = direction
+		npcX(index - 1) = x
+		npcY(index - 1) = y
+		npcFrame(index - 1) = frame
+	end if
+
+	if index = 0 then
+		dim larmor as ubyte
+		dim llife as ubyte
+		dim lammo as ubyte
+		if direction = directionRD or direction = directionLD then
+			larmor = rnd*(3-playerDifficulty) + 2
+			if rnd*5 = 1 then llife = rnd*2
+			'if playerDifficulty > 1 then llife = 0
+			lammo = rnd*4 + playerDifficulty + 10
+			if PlayerSearch1(playerX,playerY + 1,larmor,lammo,llife) = 1 then
+				playerAmmo = playerAmmo + lammo
+				if playerAmmo>99 then playerAmmo = 99
+				playerLives = playerLives + llife
+				if playerLives>99 then playerLives = 99
+				playerShield = playerShield + larmor
+				if playerShield>99 then playerShield = 99
+				RefreshUI()
+				'RefreshNPCs()
+				'DrawPlayer(playerDirection,playerFrame,playerX,playerY,7)
+			end if
+		end if
+	end if
+end sub
+
+sub RefreshUI()
+	DrawUI1(playerLives,playerAmmo,playerShield,playerFrags)
+	beep 0.005,0.01
+end sub
+
+sub StepSound()
+	'beep 0.0005,3
+	beep 0.0003,1
+end sub
+
+sub StepSound2()
+	beep 0.0003,2
+	'beep 0.0003,1
+end sub
+
+sub SetBlood(ndir as byte, x as ubyte, y as ubyte)
+	if y<2 then return
+	dim value as ubyte
+	if ndir = directionLS or ndir = directionLF or ndir = directionL then 
+		if x+2<=31 then
+			value = map(y,x+2)
+			if value = 0 or value = 18 then 
+				map(y,x+2) = 24
+				if achFB=0 then achFB=1
+				RedrawArea1(y,x+2)
+			end if 
+		end if 		
+	else
+		if x-1>=0 then
+			value = map(y,x-1)
+			if value = 0 or value = 18 then 
+				map(y,x-1) = 24
+				if achFB=0 then achFB=1
+				RedrawArea1(y,x-1)
+			end if 
+		end if 		
+	end if 
+end sub 
+
+function NPCCanFall(x as ubyte, y as ubyte, alive as ubyte) as ubyte
+	return CanFall(x,y,alive)
+end function
+
+sub InitNPC(x as ubyte, y as ubyte, direction as ubyte, index as ubyte)
+	npcLive(index) = 1
+	npcHP(index) = 3 + playerDifficulty*2 - 1
+	if mapNumber=1 then
+		if npcMap1(index)=0 then npcLive(index) = 0: npcHP(index) = 0
+	end if 
+	if mapNumber=2 then
+		if npcMap2(index)=0 then npcLive(index) = 0: npcHP(index) = 0
+	end if 
+	if mapNumber=3 then
+		if npcMap3(index)=0 then npcLive(index) = 0: npcHP(index) = 0
+	end if 
+	npcMove(index) = 0
+	npcDirection(index) = direction
+	npcX(index) = x
+	npcY(index) = y
+	npcWorried(index) = 0
+	npcActive(index) = 0
+	npcFrame(index) = 1	
+end sub
+
+sub RefreshNPCs()
+	for i = 0 to 5
+		if achHH=2 and mapNumber<>1 then npcLive(i)=0
+        if npcLive(i) = 1 if npcHP(i)>0 then
+			DrawPlayer(npcDirection(i), npcFrame(i), npcX(i), npcY(i), 5)
+        end if
+    next i
+end sub

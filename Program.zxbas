@@ -1,0 +1,776 @@
+﻿#include "Functions.zxbas"
+#include "PlayerAndNPC.zxbas"
+#include "Music.zxbas"
+#include "Alien.zxbas"
+'#include <winscroll.bas>
+'#include "InGameMusic.zxbas"
+
+PlayMusic(0)
+pause 0
+BORDER 0 : PAPER 0 : INK 7 : BRIGHT 0
+CLS
+Randomize
+
+const key1 as uinteger = 63233
+const key2 as uinteger = 63234
+const key3 as uinteger = 63236
+const key4 as uinteger = 63240
+const key5 as uinteger = 63248
+const key6 as uinteger = 61200
+const key7 as uinteger = 61192
+const key8 as uinteger = 61188
+const key9 as uinteger = 61186
+const key0 as uinteger = 61185
+const keybreak as uinteger = 65025
+
+dim exitlocked as ubyte
+exitlocked=0
+
+
+
+dim t as ubyte
+
+dim defkeyindex as ubyte = 0
+dim gameDifficulty as ubyte = 1
+dim joystick as ubyte = 1
+
+'goto start
+
+keyLeft = key1
+keyRight = key2
+keyUp = key4
+keyDown = key3
+keyFire = key5
+
+'Menu
+drawmenu:
+REM ink 6
+REM printat64(0,4): print64("ALFA VERSION. FOR DEBUG PURPOSES ONLY! BUILD 29082020.")
+ink 6
+Environment2()
+print at 6,11; "\B\C"
+print at 7,11; "\D\E"
+
+ink 2
+print at 6,13; bold 1; "RED RAID"
+ink 4
+printat64(7,26): print64("THE SINKING...")
+ink 7
+printat64(8,29): print64("SIDE B")
+ink 5
+printat64(10,26): print64("1 NEW GAME")
+UpdateJoystik(joystick)
+printat64(12,26): print64("3 DEFINE KEYS")
+UpdateDiff(gameDifficulty)
+PrintCompany()
+LongWait()
+PlayMusic(0)
+dim b as uinteger
+
+:mainmenu
+	b =  GetKeyScanCode
+	if b = key1 then Click(): CLS: goto start
+	if b = key2 then
+		ink 5
+		joystick = joystick+1
+		if joystick>3 then joystick = 1
+		if joystick=1 then
+			keyLeft = key1
+			keyRight = key2
+			keyUp = key4
+			keyDown = key3
+			keyFire = key5
+		end if
+		if joystick=2 then
+			keyLeft = key6
+			keyRight = key7
+			keyUp = key9
+			keyDown = key8
+			keyFire = key0
+		end if
+		if joystick=3 then
+			keyLeft = 57090
+			keyRight = 57089
+			keyUp = 64257
+			keyDown = 64769
+			keyFire = 32513
+		end if
+		UpdateJoystik(joystick)
+		Click()
+		pause 2
+		b = 0
+	end if
+	if b = key3 then
+		Click()
+		CLS
+		ink 2
+		print at 6,11; bold 1; "DEFINE KEYS"
+		PrintCompany()
+		ink 5
+		defkeyindex = 0
+		keys:
+			if defkeyindex = 0 then printat64(9,24): print64("LEFT")
+			if defkeyindex = 1 then printat64(10,24): print64("RIGHT")
+			if defkeyindex = 2 then printat64(11,24): print64("UP/USE")
+			if defkeyindex = 3 then printat64(12,24): print64("DOWN")
+			if defkeyindex = 4 then printat64(13,24): print64("FIRE")
+			b =  GetKeyScanCode
+			if b<>0 then
+				if defkeyindex = 0 then keyLeft = b
+				if defkeyindex = 1 then keyRight = b
+				if defkeyindex = 2 then keyUp = b
+				if defkeyindex = 3 then keyDown = b
+				if defkeyindex = 4 then keyFire = b
+				printat64(9 + defkeyindex,40)
+				print64("OK")
+				defkeyindex = defkeyindex + 1
+				b=0
+				Click()
+				LongWait()
+				if defkeyindex = 5 then CLS: joystick=2: goto drawmenu
+				goto keys
+			end if
+		goto keys:
+	end if
+	if b = key4 then
+		ink 5
+		gameDifficulty = gameDifficulty+1
+		if gameDifficulty>3 then gameDifficulty = 1
+		UpdateDiff(gameDifficulty)
+		Click()
+		LongWait()
+		b = 0
+	end if
+goto mainmenu
+
+:start
+dim i as ubyte
+
+for i=0 to 5
+	npcMap1(i)=1
+	npcMap2(i)=1
+	npcMap3(i)=1
+next
+
+playerShield=10
+playerLives=3
+playerAmmo=20
+playerFrags=0
+AlienDead=1
+AlienHP=0
+
+InitLevels()
+SetDifficulty(gameDifficulty)
+playerDead = 0
+playerDirection = directionRS
+playerX = 17
+playerY = 1
+
+'achHH=2
+'playerFrags=18
+'playerY=11
+DrawLevel(1)
+
+RespawnPlayer()
+
+
+
+'InitInGameMusic()
+
+
+dim countLive as ubyte
+dim hitcalculated as ubyte
+dim action as ubyte
+dim deltaX as ubyte
+dim deltaY as ubyte
+:main
+	
+
+	playerCanMoveLeft = 1
+	playerCanMoveRight = 1
+
+	
+
+	dim nx as ubyte
+	dim ny as ubyte
+	dim nframe as ubyte
+	dim ndir as ubyte
+	dim nlive as ubyte
+	dim nactive as ubyte
+	dim nmove as ubyte
+	dim npcaction as ubyte
+	dim nhp as ubyte
+
+	for i = 0 to 5
+		nlive = npcLive(i)
+		npcaction = actionEmpty
+		nx = npcX(i)
+		ny = npcY(i)
+		nframe = npcFrame(i)
+		ndir = npcDirection(i)			
+		nactive = npcActive(i)
+		nmove = npcMove(i)
+		nhp = npcHP(i)
+		hitcalculated=0
+		if nlive = 1 then
+			countLive = countLive + 1			
+			if playerY > ny then
+				deltaY = playerY - ny
+			else
+				deltaY = ny - playerY
+			end if
+			if playerX > nx then
+				deltaX = playerX - nx
+			else
+				deltaX = nx - playerX
+			end if
+			if nactive = 0 then
+				if playerY = ny then npcActive(i) = 1: nactive = 1
+			end if
+			if nactive = 1 then
+				if deltaY > 0 and npcWorried(i) > 0 then
+					nframe = 1
+					nmove = 0
+					if ndir = directionLF or ndir = directionLK or ndir = directionL then ndir = directionLD
+					if ndir = directionRF or ndir = directionRK or ndir = directionR then ndir = directionRD
+					npcaction = actionD
+					npcActive(i) = 0
+					nactive = 0
+					goto skipnpc
+				end if
+			end if
+			if NPCCanFall(nx, ny, nlive) = 1 then
+				npcActive(i) = 1
+				nactive = 1
+				npcaction = actionD
+				goto skipnpc
+			end if
+			if nlive = 1 and nhp = 0 and (ndir <> directionRX and ndir <> directionLX) then
+				nmove = 0
+				nframe = 1
+				if ndir = directionRS or ndir = directionR or ndir = directionRF or ndir = directionRD or ndir = directionRK then
+					npcDirection(i) = directionRX
+					ndir = directionRX
+				end if
+				if ndir = directionLS or ndir = directionL or ndir = directionLF or ndir = directionLD or ndir = directionLK then
+					npcDirection(i) = directionLX
+					ndir = directionLX
+					nx=nx-1
+				end if
+				npcaction = actionX
+				goto skipnpc
+			end if
+			if nactive = 1 or (nhp=0 and nlive=1) then
+				if nlive = 1 and nhp = 0 and (ndir = directionLX or ndir = directionRX) then
+					if mapNumber=1 then npcMap1(i)=0
+					if mapNumber=2 then npcMap2(i)=0
+					if mapNumber=3 then npcMap3(i)=0
+					if NPCCanFall(nx, ny, 0) = 0 then
+						PlayerOrNPCAction(nx, ny, ndir, actionX, nmove, nframe, 5, i+1)
+						if nframe = 5 then
+							npcLive(i) = 0
+							nlive = 0
+							playerFrags = playerFrags +1
+							if playerFrags=18 then achHH=1
+							'if playerFrags=1 then achHH=1
+							RefreshUI()
+							'Init alien
+							if AlienDead=1 then
+								if GetChar(nx,ny-1)=16 then
+									AlienScream()
+									InitAlien(nx,ny+1)
+								end if 
+							end if 
+						end if
+						goto skipnpc
+					else
+						npcaction = actionX
+						goto skipnpc
+					end if
+				end if
+				if nlive = 1 and nhp > 0 then
+					if playerY = ny and playerShield > 0 then
+						dim canHit as ubyte = 1
+						if playerX > nx then canHit = CanHit(nx,playerY,playerX)
+						if playerX < nx then canHit = CanHit(playerX,playerY,nx)
+						hitcalculated=hitcalculated+1
+						if canHit = 1 then
+							if ndir <> directionRF and ndir <> directionLF and ndir <> directionLK and ndir <> directionRK then
+								npcWorried(i) = 1
+								if npcDuration(i) = 0 then
+									if nx < playerX then ndir = directionRS
+									if nx > playerX then ndir = directionLS
+									npcDuration(i) = 5
+									npcaction = actionEmpty
+									dim act as ubyte = RND*7
+									if act <= 2 and nmove = 0 then
+										if nx < playerX then ndir = directionRD
+										if nx > playerX then ndir = directionLD
+										nframe = 1
+										npcDuration(i) = 5
+									end if
+									if act = 3 or act = 6 then
+										if nx < playerX then ndir = directionRS
+										if nx > playerX then ndir = directionLS
+										npcaction = actionF
+										nmove = 0
+										nframe = 1
+										goto skipnpc
+									end if
+									if playerMove = 0  and (action <> actionL and action <> actionR) then
+										if act = 4 then
+											if nx + 2 < playerX and playerMove = 0 then
+												if NPCCanMoveRight(nx, ny) = 1 then
+													npcaction = actionR
+													goto skipnpc
+												end if
+											end if
+										end if
+										if act = 5 then
+											if nx - 2 > playerX and playerMove = 0 then
+												if NPCCanMoveLeft(nx, ny) = 1 then
+													npcaction = actionL
+													goto skipnpc
+												end if
+											end if
+										end if
+									end if
+								end if
+							end if
+							goto skipnpc
+						else
+							if ndir<>directionRS and ndir<>directionLS then goto skipnpc
+						end if
+					else
+						if npcWorried(i) = 1 then
+							npcWorried(i) = 2
+							npcFrame(i) = 1
+						end if
+					end if
+				end if
+				goto skipnpc2
+				:skipnpc
+				if playerY = ny and nhp > 0 then
+					if nx - playerX = 1 or playerX - nx = 1 then
+						if NPCCanMoveLeft(nx-1, ny) = 1 then nx = nx - 1
+						if NPCCanMoveRight(nx-1, ny) = 1 then nx = nx + 1
+					end if
+					if nx = playerX then
+						if NPCCanMoveLeft(nx, ny) = 1 then nx = nx - 1
+						if NPCCanMoveRight(nx, ny) = 1 then nx = nx + 1
+					end if
+				end if
+				PlayerOrNPCAction(nx, ny, ndir, npcaction, nmove, nframe, 5, i+1)
+				:skipnpc2
+				npcFrame(i) = npcFrame(i)+1
+				if npcFrame(i) > 5 then npcFrame(i) = 1
+				if npcDuration(i)>0 then npcDuration(i) = npcDuration(i) - 1
+			end if
+			
+			'Check if player can move
+			if playerY = ny then
+				if nx+2 = playerX then
+					playerCanMoveLeft = 0
+				end if
+				if nx-2 = playerX then
+					playerCanMoveRight = 0
+				end if
+			end if
+		end if
+	next i
+
+	'Alien
+	if AlienHP>0 then
+		AlienFrame=AlienFrame+1
+		if AlienFrame>8 then AlienFrame=1
+	end if 
+
+	if AlienHP>1 then
+		DrawAlien()
+		if AlienFrame=4 and (AlienAction=AlienActionFireRight or AlienAction=AlienActionFireLeft) then
+			border 2
+			playerShield=playerShield-1
+			AttackSound()
+			RefreshUI()
+			border 0
+        end if 
+		if AlienAction=AlienActionEmpty then
+			dim ch as ubyte
+			dim alac as ubyte
+			alac = rnd*5
+			if playerAmmo=0 then 
+				if AlienLocation=AlienLocationDown then 
+					AlienAction=AlienActionUp
+					AlienFrame=1
+					alac=0
+				end if 
+			else
+				'Move up/down
+				if alac = 0 then 
+					if AlienLocation = AlienLocationDown then AlienAction=AlienActionUp
+					if AlienLocation = AlienLocationUp then 						
+						ch=GetChar(AlienX,AlienY+2)
+						if ch=16 or ch=62 then
+							AlienAction=AlienActionDown
+						end if 
+					end if 
+					AlienFrame=1
+				end if 
+			end if 
+			'Move left/right
+			if alac > 0 and alac < 3 and AlienLocation = AlienLocationUp and playerMove=0 then 
+				alac = rnd*2
+				if playerAmmo=0 then
+					if playerX<AlienX then 
+						alac=0
+					else
+						alac=1
+					end if 
+				end if 
+				'Move left
+				if alac=0 then
+					if AlienX-1<32 then
+						ch=GetChar(AlienX-1,AlienY)
+						if ch<>10 and ch<>16 then
+							if GetChar(AlienX-1,AlienY-1)=16 or GetChar(AlienX-1,AlienY-1)=6 then
+								AlienAction=AlienActionLeft
+								if playerX<AlienX then
+									if playerX+1=AlienX-1 then AlienAction=AlienActionEmpty
+								end if 
+								AlienFrame=1
+							end if 
+						end if 
+					end if 
+				end if 
+				'Move Right
+				if alac=1 then
+					if AlienX+1<32 then
+						ch=GetChar(AlienX+1,AlienY)
+						if ch<>10 and ch<>16 then
+							if GetChar(AlienX+1,AlienY-1)=16 then
+								AlienAction=AlienActionRight
+								if playerX>AlienX then
+									if playerX-1=AlienX+1 then AlienAction=AlienActionEmpty
+								end if 
+								AlienFrame=1
+							end if 
+						end if 
+					end if 
+				end if 
+			end if 
+			'Fire
+			if alac = 4 and AlienLocation = AlienLocationUp and playerMove=0 and AlienAction=AlienActionEmpty then
+				if playerX>AlienX then
+					if playerX-AlienX=2 then
+						AlienAction=AlienActionFireRight
+						AlienFrame=1
+					end if 
+				else
+					if AlienX-playerX=2 then
+						AlienAction=AlienActionFireLeft
+						AlienFrame=1
+					end if 
+				end if 				
+			end if 
+		end if 
+		DrawAlien()
+		if playerX<AlienX then
+			if playerX+1=AlienX-1 then playerCanMoveRight = 0
+		end if 
+		if playerX>AlienX then
+			if playerX-1=AlienX+1 then playerCanMoveLeft = 0
+		end if 
+	end if 	
+
+	'Move player
+    action = actionEmpty
+	if MultiKeys(keybreak)>0 then
+		ink 6
+		flash 1
+		printat64(21,17): print64(" PRESS FIRE TO QUIT THE GAME  ")
+		Click()
+		:pausegame2
+		b = GetKeyScanCode()
+		if b > 0 then 
+			flash 0
+			if b = keyFire then
+				cls
+				goto drawmenu
+			else				
+				ClearStatusLine()
+				goto continuegame3
+			end if 
+		end if 
+		goto pausegame2
+		:continuegame3
+	end if 
+	if MultiKeys(keyRight)>0 and MultiKeys(keyUp)=0  then
+		playerStairsDelay = 0
+		if playerDirection = directionLS or playerDirection = directionLD then
+			playerDirection = directionRS
+			action = actionEmpty
+		else
+			if playerCanMoveRight = 1 then
+				action = actionR
+			else
+				playerDirection = directionRS
+				action = actionEmpty
+			end if
+		end if
+	end if
+	if MultiKeys(keyLeft)>0 and MultiKeys(keyUp)=0 then
+		playerStairsDelay = 0
+		if playerDirection = directionRS or playerDirection = directionRD then
+			playerDirection = directionLS
+			action = actionEmpty
+		else
+			if playerCanMoveLeft = 1 then
+				action = actionL
+			else
+				playerDirection = directionLS
+				action = actionEmpty
+			end if
+		end if
+	end if
+	if MultiKeys(keyUp)>0 and MultiKeys(keyLeft)=0 and MultiKeys(keyRight)=0 then action = actionU
+	if GetMap()=1 and playerFrags>17 then 
+		t=0
+		for i=0 to 4
+		 t=t+npcLive(i)
+		next
+		if t>0 then 
+			if action=actionU and playerX=26 and playerY=7 then action=actionEmpty
+			if exitlocked=0 then LockUnlockExit(1): exitlocked=1
+		else
+			if exitlocked=1 then LockUnlockExit(0): exitlocked=0
+		end if 
+	end if 
+	if action = actionR and GetMap()=1 and playerFrags>23 and npcLive(5)=0 then
+		if InShip(playerX,playerY)=1 then
+			RedrawShip()
+			AlienFrame=1
+			AlienLocation=AlienLocationDown
+			AlienX=npcX(5)
+			AlienY=2
+			AlienHP=1
+			AlienScream()		
+			:movealien				
+				AlienAction=AlienActionRight				
+				DrawAlien()
+				if AlienX=26 then goto evac
+				AlienFrame=AlienFrame+1
+				if AlienFrame>8 then AlienFrame=1
+				Wait(): Wait(): Wait(): Wait(): Wait(): Wait()
+				goto movealien
+			:evac
+			RedrawShip()
+			PlayMusic(1)
+			Evacuate()
+			ShowAchievements()
+			flash 0
+			Click()
+			paper 0
+			cls
+			print at 9,8; ink 4; "CONGRATULATIONS!"
+			print at 11,6; ink 4; "MISSION ACCOMPLISHED!"
+			Click():Click():Click()
+			PlayMusic(0)
+			pause 0
+			Click()
+			playerDead = 0
+			CLS: goto drawmenu
+		end if 
+	end if 
+	if MultiKeys(keyDown)>0 then 
+		action = actionD
+	end if
+	if MultiKeys(keyFire)>0 then 
+		action = actionF: playerStairsDelay = 0
+	end if 
+	if playerMove = 0 and (playerDirection = directionRS or playerDirection = directionLS or playerDirection = directionRD or playerDirection = directionLD) then playerFrame = 1
+	if playerMove = 0 then
+		if MultiKeys(keyRight)>0 and playerX=31 and GetMap()=2 and AlienHP=0 then 
+			playerX=0
+			SaveLevel(2)
+			DrawLevel(1)
+			RefreshUI()
+			goto main
+		end if 
+		if MultiKeys(keyLeft)>0 and playerX=0 and GetMap()=1 and AlienHP=0 then 
+			playerX=31
+			SaveLevel(1)
+			DrawLevel(2)
+			RefreshUI()
+			goto main
+		end if 
+		if MultiKeys(keyRight)>0 and playerX=31 and GetMap()=1 and AlienHP=0 then 
+			playerX=0
+			SaveLevel(1)
+			DrawLevel(3)
+			RefreshUI()
+			goto main
+		end if 
+		if MultiKeys(keyLeft)>0 and playerX=0 and GetMap()=3 and AlienHP=0 then 
+			playerX=31
+			SaveLevel(3)
+			DrawLevel(1)
+			RefreshUI()
+			goto main
+		end if 
+	end if 
+
+	if playerDead = 1 and playerDirection <> directionRX and playerDirection <> directionLX then
+		playerFrame = 1
+		playerMove = 0
+		if playerDirection = directionRS or playerDirection = directionR or playerDirection = directionRD or playerDirection = directionRS1 or playerDirection = directionRS2 then
+			playerDirection = directionRX
+		end if
+		if playerDirection = directionLS or playerDirection = directionL or playerDirection = directionLD or playerDirection = directionLS1 or playerDirection = directionLS2 then
+			playerDirection = directionLX
+			playerX=playerX-1
+		end if
+	end if
+
+	if (playerDirection = directionRX or playerDirection = directionLX) then
+		action = actionX
+	end if
+	PlayerOrNPCAction(playerX, playerY, playerDirection, action, playerMove, playerFrame, 7, 0)
+		
+	if playerDead = 1 and playerLives > 0 then
+		playerLives = playerLives - 1
+		playerShield = 10
+		playerAmmo = 20
+		if AlienDead=0 then DrawAlien()
+		AlienHP=0
+		AlienDead=1
+		PlayMusic(2)
+		DrawLevel(GetMap())
+		RespawnPlayer()
+		goto main
+	end if
+	
+	playerFrame = playerFrame + 1
+	if playerDead=1 and playerLives=0 and playerFrame>5 then
+		:subsink
+		PlayMusic(2)
+		paper 0
+		cls
+		print at 10,11; ink 4; "GAME OVER"
+		:itsank
+		if MultiKeys(keyFire)>0 then
+			goto itsankend
+		end if 
+		goto itsank
+		:itsankend
+		Click()
+		playerDead = 0
+		CLS: goto drawmenu
+	end if 
+	if playerFrame > 5 then 
+		playerFrame = 1
+		'PlayInGameMusic()
+	end if 
+
+	if playerShield = 0 and playerDead = 0 and playerDirection <> directionRX and playerDirection <> directionLX then
+		playerFrame = 1
+		playerMove = 0
+		if playerDirection = directionRS or playerDirection = directionRF or playerDirection = directionR or playerDirection = directionRD or playerDirection = directionRS1 or playerDirection = directionRS2 or playerDirection = directionRK then
+			playerDirection = directionRX
+		end if
+		if playerDirection = directionLS or playerDirection = directionLF or playerDirection = directionL or playerDirection = directionLD or playerDirection = directionLS1 or playerDirection = directionLS2 or playerDirection = directionLK then
+			playerDirection = directionLX
+		end if
+	end if
+	
+	dim redrawplayer as ubyte = 0
+	if playerShield = 0 and (playerDirection = directionRX or playerDirection = directionLX) then
+		action = actionX
+		redrawplayer = 1
+	end if
+	'if playerShield > 0 then
+	''	redrawplayer = 1
+	'end if
+	if redrawplayer = 1 then
+		PlayerOrNPCAction(playerX, playerY, playerDirection, actionEmpty, playerMove, playerFrame, 7, 0)
+	end if
+
+	if hitcalculated = 0 and countLive > 0 then
+		Wait()
+	end if 
+	if countLive = 0 then 
+		Wait()
+		Wait()
+	else
+		Wait()
+	end if
+
+	if AlienHP=1 then
+		if AlienDead=0 then AlienFrame=1
+		DrawAlienDies()
+	end if 	
+
+goto main
+
+sub Wait()
+	asm
+    	HALT
+	end asm
+end sub
+
+sub LongWait()
+	Wait()
+	Wait()
+	Wait()
+end sub 
+
+sub UpdateDiff(diff as ubyte)
+	printat64(13,26)
+	if diff=1 then
+		print64("4 EASY")
+	end if
+	if diff=2 then
+		print64("4 NORMAL")
+	end if
+	if diff=3 then
+		print64("4 HARD  ")
+	end if
+end sub
+
+sub UpdateJoystik(joy as ubyte)
+	printat64(11,26)
+	if joy=1 then
+		print64("2 SINCLAIR")
+	end if
+	if joy=2 then
+		print64("2 KEYBOARD")
+	end if
+end sub
+
+sub PrintCompany()
+	ink 4
+	print at 17,13; "\F"
+	print at 18,13; "\H"
+	printat64(18,30): print64("BITLES")
+	plot 130,40
+	plot 130,39
+	print at 17,16; "\J"
+	ink 1
+	bright 1
+
+	print at 17,14; "\G"
+	print at 18,14; "\I"
+	bright 0
+	'printat64(19,22): print64("V1.1 BUILD 02072020")
+end sub
+
+sub ShotSound()
+	beep 0.0005,5
+	beep 0.0006,3
+	beep 0.0005,1
+end sub
+
+sub AttackSound()
+    beep 0.0005,10
+	beep 0.0005,50
+	beep 0.0006,30	
+end sub
